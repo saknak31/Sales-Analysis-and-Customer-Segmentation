@@ -1,0 +1,177 @@
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+import seaborn as sns
+from textwrap import wrap
+
+# Load the data
+df = pd.read_csv('sales_data.csv')  # Replace with your actual file name
+
+# Data cleaning
+def clean_data(df):
+    # Remove duplicates
+    df.drop_duplicates(inplace=True)
+    
+    # Convert price columns to numeric, removing the currency symbol and commas
+    price_columns = ['discounted_price', 'actual_price']
+    for col in price_columns:
+        df[col] = df[col].str.replace('₹', '').str.replace(',', '').astype(float)
+    
+    # Convert discount_percentage to numeric
+    df['discount_percentage'] = df['discount_percentage'].str.rstrip('%').astype(float) / 100
+    
+    # Convert rating and rating_count to numeric
+    df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+    df['rating_count'] = pd.to_numeric(df['rating_count'], errors='coerce')
+    
+    return df
+
+# Sales analysis
+def sales_analysis(df):
+    # Assuming higher rating_count indicates more sales
+    product_popularity = df.groupby('product_name')['rating_count'].sum().sort_values(ascending=False)
+    
+    # Average discount by category
+    avg_discount = df.groupby('category')['discount_percentage'].mean().sort_values(ascending=False)
+    
+    # Average rating by category
+    avg_rating = df.groupby('category')['rating'].mean().sort_values(ascending=False)
+    
+    return product_popularity, avg_discount, avg_rating
+
+# Customer segmentation (using product categories as a proxy for customer preferences)
+def product_segmentation(df):
+    # Create a pivot table of categories and their average ratings
+    category_ratings = df.groupby('category')['rating'].mean().reset_index()
+    
+    # Normalize the data
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(category_ratings[['rating']])
+    
+    # Perform K-means clustering
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    category_ratings['Cluster'] = kmeans.fit_predict(scaled_data)
+    
+    return category_ratings
+
+import pandas as pd
+import numpy as np
+from sklearn.preprocessing import StandardScaler
+from sklearn.cluster import KMeans
+import matplotlib.pyplot as plt
+import seaborn as sns
+from textwrap import wrap
+
+def clean_data(df):
+    df.drop_duplicates(inplace=True)
+    price_columns = ['discounted_price', 'actual_price']
+    for col in price_columns:
+        df[col] = df[col].str.replace('₹', '').str.replace(',', '').astype(float)
+    df['discount_percentage'] = df['discount_percentage'].str.rstrip('%').astype(float) / 100
+    df['rating'] = pd.to_numeric(df['rating'], errors='coerce')
+    df['rating_count'] = pd.to_numeric(df['rating_count'], errors='coerce')
+    return df
+
+def merge_categories(df):
+    df['main_category'] = df['category'].str.split('|').str[0]
+    return df
+
+def sales_analysis(df):
+    product_popularity = df.groupby('product_name')['rating_count'].sum().sort_values(ascending=False)
+    avg_discount = df.groupby('main_category')['discount_percentage'].mean().sort_values(ascending=False)
+    avg_rating = df.groupby('main_category')['rating'].mean().sort_values(ascending=False)
+    return product_popularity, avg_discount, avg_rating
+
+def product_segmentation(df):
+    category_ratings = df.groupby('main_category')['rating'].mean().reset_index()
+    scaler = StandardScaler()
+    scaled_data = scaler.fit_transform(category_ratings[['rating']])
+    kmeans = KMeans(n_clusters=3, random_state=42)
+    category_ratings['Cluster'] = kmeans.fit_predict(scaled_data)
+    return category_ratings
+
+def wrap_labels(ax, width, break_long_words=False):
+    labels = []
+    for label in ax.get_xticklabels():
+        text = label.get_text()
+        labels.append('\n'.join(wrap(text, width, break_long_words=break_long_words)))
+    ax.set_xticklabels(labels, rotation=0, ha='center')
+
+def plot_product_popularity(product_popularity):
+    plt.figure(figsize=(16, 8))
+    ax = product_popularity.head(10).plot(kind='bar')
+    plt.title('Top 10 Popular Products', fontsize=16)
+    plt.xlabel('Product Name', fontsize=12)
+    plt.ylabel('Rating Count (Proxy for Sales)', fontsize=12)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    wrap_labels(ax, 20, break_long_words=True)
+    plt.tight_layout()
+    plt.show()
+
+def plot_avg_discount(avg_discount):
+    plt.figure(figsize=(16, 8))
+    ax = avg_discount.head(20).plot(kind='bar')
+    plt.title('Average Discount by Main Category (Top 20)', fontsize=16)
+    plt.xlabel('Main Category', fontsize=12)
+    plt.ylabel('Average Discount', fontsize=12)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    wrap_labels(ax, 20)
+    plt.tight_layout()
+    plt.show()
+
+def plot_product_segments(category_ratings):
+    plt.figure(figsize=(16, 10))
+    top_20 = category_ratings.nlargest(20, 'rating')
+    ax = sns.scatterplot(data=top_20, x='main_category', y='rating', hue='Cluster', palette='viridis', s=100)
+    plt.title('Product Main Category Segments (Top 20)', fontsize=16)
+    plt.xlabel('Main Category', fontsize=12)
+    plt.ylabel('Average Rating', fontsize=12)
+    plt.xticks(fontsize=10)
+    plt.yticks(fontsize=10)
+    wrap_labels(ax, 20)
+    plt.legend(title='Cluster', title_fontsize='12', fontsize='10')
+    plt.tight_layout()
+    plt.show()
+
+# Main execution
+if __name__ == "__main__":
+    # Load and clean data
+    df = pd.read_csv('sales_data.csv')
+    df = clean_data(df)
+    
+    # Merge categories
+    df = merge_categories(df)
+    
+    # Print the first few rows to verify the cleaning and merging worked
+    print(df[['main_category', 'discounted_price', 'actual_price', 'discount_percentage', 'rating', 'rating_count']].head())
+    
+    # Perform sales analysis
+    product_popularity, avg_discount, avg_rating = sales_analysis(df)
+    print("\nTop 5 Popular Products:")
+    print(product_popularity.head())
+    print("\nTop 5 Main Categories by Average Discount:")
+    print(avg_discount.head())
+    print("\nTop 5 Main Categories by Average Rating:")
+    print(avg_rating.head())
+    
+    # Plot product popularity
+    plot_product_popularity(product_popularity)
+    
+    # Plot average discount by main category (top 20)
+    plot_avg_discount(avg_discount)
+    
+    # Perform product segmentation
+    category_segments = product_segmentation(df)
+    
+    # Plot product segments (top 20)
+    plot_product_segments(category_segments)
+    
+    print("\nProduct Main Category Segmentation Summary (Top 20):")
+    print(category_segments.nlargest(20, 'rating').groupby('Cluster').agg({
+        'rating': ['mean', 'min', 'max'],
+        'main_category': 'count'
+    }))
